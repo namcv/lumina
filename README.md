@@ -228,8 +228,10 @@ npx lumina init -r ./my-repo
 After running `init`, Claude Code will have:
 - `CLAUDE.md` — architecture context (auto-read by Claude Code)
 - `.claude/source-map.json` — dependency graph
-- `.claude/commands/lumina-review.md` — `/lumina-review` slash command
+- `.claude/commands/lumina-review.md` — `/lumina-review` slash command with the **project root baked in**
 - Auto-regeneration hook on every file edit
+
+> The generated `.claude/commands/lumina-review.md` has the absolute path of the project hardcoded as the default `--root`, so `/lumina-review` always targets the correct repo regardless of which directory Claude Code is launched from.
 
 ### `/lumina-review` — Claude Code slash command
 
@@ -242,6 +244,9 @@ After `lumina init`, use this directly inside Claude Code:
 /lumina-review HEAD~3                                             # review last 3 commits
 /lumina-review https://github.com/owner/repo/pull/123            # from GitHub PR URL
 /lumina-review https://gitlab.com/group/project/-/merge_requests/456  # from GitLab MR URL
+
+# Override root on the fly (useful with the global skill)
+/lumina-review --root ./other-repo feat/my-feature main
 ```
 
 Set `GITHUB_TOKEN` or `GITLAB_TOKEN` env vars for private repositories when using a URL.

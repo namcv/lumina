@@ -38,42 +38,57 @@ npx lumina graph --open
 
 ## Code Review Workflow
 
-The key feature of Lumina: instead of asking Claude to scan your entire codebase, generate a **focused review context** that contains only the files that matter for a given MR.
+The key feature of Lumina: instead of asking Claude to scan your entire codebase, `/lumina-review` generates a **focused review context** containing only files that matter — with a built-in checklist guiding Claude on what to look for.
+
+### Setup (one time)
 
 ```bash
-# Generate review context for current branch vs main
-lumina review --base main
-
-# Save to file and paste into Claude Code
-lumina review --base main -o .claude/review-context.md
+npx @namcv/lumina init
 ```
 
-Example output:
+This creates `.claude/commands/lumina-review.md` — a Claude Code slash command available immediately.
+
+### Usage inside Claude Code
+
 ```
-## Changed Files (32)
-| File | Type | Complexity | Risk |
-| src/helper/utils.ts | unknown | 13.4 | 🔥 High |
-| src/common/constant.ts | unknown | 5.3 | 🔥 High |
-...
-
-## Impacted Files (13)
-> These files import the changed files and may be affected.
-...
-
-Total files to review: 45 (32 changed + 13 impacted)
-vs full repo: 716 files — saving 94% scan effort
+/lumina-review              # review vs main (default)
+/lumina-review develop      # review vs develop
+/lumina-review HEAD~3       # review last 3 commits
 ```
 
-Paste the output into Claude Code with:
-```
-<review-context>
-[paste review-context.md content here]
-</review-context>
+Claude will automatically:
+1. Run `lumina review` to compute the impact scope
+2. Read only the changed + impacted files
+3. Follow a structured checklist covering correctness, security, performance, design, and test coverage
+4. Report findings grouped by file with severity labels and fix suggestions
 
-Please review this MR. Only look at the files listed above.
+### What's in the review context
+
+```
+## Instructions for Claude
+
+### Review Checklist
+**Correctness** — logic errors, null dereference, async misuse, race conditions
+**Security**    — XSS, token exposure, missing auth checks
+**Performance** — unnecessary re-renders, N+1 calls, missing useEffect cleanup
+**Design**      — naming, anti-patterns, TypeScript types, hardcoded strings
+**Tests**       — mock accuracy, edge cases covered
+
+### Output Format
+- 🔴 Bug | 🟡 Design | 🟢 Minor
+- Code snippet + explanation + suggested fix
+- Summary table + must-fix-before-merge list
+
+## Token Estimate
+| | Lumina review | Full repo scan |
+|---|---|---|
+| Files | 7 | 716 |
+| Input tokens | ~15,449 | ~1,197,376 |
+| Est. cost (Sonnet $3/MTok) | ~$0.05 | ~$3.59 |
+| Tokens saved | | ~1,181,927 (99%) |
 ```
 
-After running `lumina analyze`, Claude Code will automatically read `CLAUDE.md` and follow the correct review workflow for every conversation.
+After running `lumina analyze`, Claude Code will also automatically read `CLAUDE.md` for full architecture context on every conversation.
 
 ---
 

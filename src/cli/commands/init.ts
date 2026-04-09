@@ -11,22 +11,50 @@ interface ClaudeSettings {
   };
 }
 
-const LUMINA_REVIEW_SKILL = `Generate a focused code review using Lumina's impact analysis.
+function buildLuminaReviewSkill(projectRoot: string): string {
+  return `Generate a focused code review using Lumina's impact analysis.
+
+## Project Root
+This skill is configured for: \`${projectRoot}\`
 
 ## Steps
 
-1. Run the following command to generate review context:
-\`\`\`bash
-npx @namcv/lumina review --base \${ARGUMENTS:-main} --root $(pwd) -o .claude/review-context.md
-\`\`\`
+1. Parse \`\${ARGUMENTS}\` to extract an optional \`--root <path>\` or \`-r <path>\` override.
+   If not provided, use the default root: \`${projectRoot}\`
 
-2. Read the generated file: \`.claude/review-context.md\`
+2. Determine the review mode from the remaining args:
+   - Empty → default vs main
+   - Starts with \`http\` → use \`--mr\` flag
+   - Two words (e.g. \`feat/x main\`) → \`<source> <target>\` positional args
+   - One word → single ref (e.g. \`develop\`, \`HEAD~3\`)
 
-3. Read each file listed in the **Changed Files** section — these were directly modified.
+3. Run the appropriate command (replace \`<root>\` with resolved root):
 
-4. Read each file listed in the **Impacted Files** section — these import the changed files and may be affected.
+   **Default (vs main):**
+   \`\`\`bash
+   npx @namcv/lumina@latest review main HEAD --root <root> -o <root>/.claude/review-context.md
+   \`\`\`
 
-5. Provide a thorough code review:
+   **Single ref:**
+   \`\`\`bash
+   npx @namcv/lumina@latest review <ref> --root <root> -o <root>/.claude/review-context.md
+   \`\`\`
+
+   **Source + Target:**
+   \`\`\`bash
+   npx @namcv/lumina@latest review <source> <target> --root <root> -o <root>/.claude/review-context.md
+   \`\`\`
+
+   **MR/PR URL:**
+   \`\`\`bash
+   npx @namcv/lumina@latest review --mr <url> --root <root> -o <root>/.claude/review-context.md
+   \`\`\`
+
+4. Read the generated file: \`<root>/.claude/review-context.md\`
+
+5. Read each **Changed Files** and **Impacted Files** listed — paths are relative to \`<root>\`.
+
+6. Provide a thorough code review:
    - **Overview** — what the MR does
    - **Issues** — bugs, incorrect logic, unsafe code (grouped by file)
    - **Design concerns** — architecture, naming, anti-patterns
@@ -36,11 +64,23 @@ npx @namcv/lumina review --base \${ARGUMENTS:-main} --root $(pwd) -o .claude/rev
 Focus on: correctness, edge cases, regressions in the impact chain, security, performance.
 Do NOT read files outside the review-context.md list unless a finding requires it.
 
-Usage:
-- \`/lumina-review\` — review against main branch
-- \`/lumina-review develop\` — review against develop branch
-- \`/lumina-review HEAD~3\` — review last 3 commits
+## Usage
+
+\`\`\`
+/lumina-review                                          # review vs main (default root: ${projectRoot})
+/lumina-review develop                                  # diff develop...HEAD
+/lumina-review feat/my-feature main                     # source vs target branch
+/lumina-review HEAD~3                                   # last 3 commits
+/lumina-review https://github.com/owner/repo/pull/123  # from GitHub PR URL
+/lumina-review https://gitlab.com/.../merge_requests/1 # from GitLab MR URL
+
+# Override root for a different repo
+/lumina-review --root ./other-repo feat/x main
+\`\`\`
+
+Set \`GITHUB_TOKEN\` or \`GITLAB_TOKEN\` env vars for private repositories when using a URL.
 `;
+}
 
 /**
  * Setup Claude Code hooks and slash commands for Lumina.
@@ -55,8 +95,8 @@ export async function initCommand(opts: { root?: string }): Promise<void> {
   fs.mkdirSync(claudeDir, { recursive: true });
   fs.mkdirSync(commandsDir, { recursive: true });
 
-  // 1. Write /lumina-review skill
-  fs.writeFileSync(skillPath, LUMINA_REVIEW_SKILL, 'utf-8');
+  // 1. Write /lumina-review skill (with project root baked in)
+  fs.writeFileSync(skillPath, buildLuminaReviewSkill(root), 'utf-8');
   console.log(pc.green('✓') + ' Slash command created: ' + pc.cyan('/lumina-review'));
   console.log(pc.dim(`  File: ${skillPath}`));
   console.log('');

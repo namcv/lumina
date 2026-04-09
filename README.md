@@ -51,9 +51,12 @@ This creates `.claude/commands/lumina-review.md` — a Claude Code slash command
 ### Usage inside Claude Code
 
 ```
-/lumina-review              # review vs main (default)
-/lumina-review develop      # review vs develop
-/lumina-review HEAD~3       # review last 3 commits
+/lumina-review                                              # review vs main (default)
+/lumina-review develop                                      # diff develop...HEAD
+/lumina-review feat/my-feature main                         # source vs target branch
+/lumina-review HEAD~3                                       # review last 3 commits
+/lumina-review https://github.com/owner/repo/pull/123      # from GitHub PR URL
+/lumina-review https://gitlab.com/group/proj/-/merge_requests/456  # from GitLab MR URL
 ```
 
 Claude will automatically:
@@ -129,11 +132,23 @@ lumina analyze ./my-repo --skip-unused # skip unused export analysis (faster)
 Generate a focused review context for Claude — lists changed files + their impact chain.
 
 ```bash
-lumina review                          # diff against main
-lumina review --base develop           # diff against develop
-lumina review --base main -o .claude/review-context.md
-lumina review --json                   # output as JSON
+# By branch name (source vs target)
+lumina review feat/my-feature main            # source branch vs target branch
+lumina review feat/my-feature develop         # source vs develop
+
+# Legacy: single arg = diff against HEAD
+lumina review develop                         # diff develop...HEAD
+
+# From GitHub PR or GitLab MR URL
+lumina review --mr https://github.com/owner/repo/pull/123
+lumina review --mr https://gitlab.com/group/project/-/merge_requests/456
+
+# Output options
+lumina review feat/x main -o .claude/review-context.md
+lumina review --mr <url> --json               # output as JSON
 ```
+
+Set `GITHUB_TOKEN` or `GITLAB_TOKEN` env vars for private repositories when using `--mr`.
 
 ### `graph`
 
@@ -221,10 +236,15 @@ After running `init`, Claude Code will have:
 After `lumina init`, use this directly inside Claude Code:
 
 ```
-/lumina-review              review against main (default)
-/lumina-review develop      review against develop
-/lumina-review HEAD~3       review last 3 commits
+/lumina-review                                                    # review vs main (default)
+/lumina-review develop                                            # diff develop...HEAD
+/lumina-review feat/my-feature main                               # source vs target branch
+/lumina-review HEAD~3                                             # review last 3 commits
+/lumina-review https://github.com/owner/repo/pull/123            # from GitHub PR URL
+/lumina-review https://gitlab.com/group/project/-/merge_requests/456  # from GitLab MR URL
 ```
+
+Set `GITHUB_TOKEN` or `GITLAB_TOKEN` env vars for private repositories when using a URL.
 
 Claude will automatically run `lumina review`, read the impact scope, and review only the relevant files — not the entire codebase.
 

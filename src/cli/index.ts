@@ -70,13 +70,15 @@ program
   .action(apiMatchCommand);
 
 program
-  .command('review')
+  .command('review [source] [target]')
   .description('Generate a focused review context for Claude from git diff + source-map impact')
   .option('-r, --root <path>', 'Repo root (default: cwd)')
-  .option('-b, --base <branch>', 'Base branch to diff against (default: main)', 'main')
+  .option('-b, --base <branch>', 'Base branch (legacy, use positional args instead)')
+  .option('--mr <url>', 'GitHub PR or GitLab MR URL — auto-fetches source/target branches')
   .option('-o, --output <path>', 'Save review context as markdown file')
   .option('--json', 'Output as JSON instead of markdown')
-  .action((opts: { root?: string; base?: string; output?: string; json?: boolean }) => reviewCommand(opts));
+  .action((source: string | undefined, target: string | undefined, opts: { root?: string; base?: string; mr?: string; output?: string; json?: boolean }) =>
+    reviewCommand({ ...opts, source, target }));
 
 program
   .command('init')

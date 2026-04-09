@@ -14,14 +14,69 @@ interface ReviewFile {
   importedByCount: number;
 }
 
+interface MrInfo {
+  sourceBranch: string;
+  targetBranch: string;
+  title: string;
+  url: string;
+}
+
+async function fetchMrInfo(mrUrl: string): Promise<MrInfo> {
+  // GitHub PR: https://github.com/owner/repo/pull/123
+  const githubMatch = mrUrl.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
+  if (githubMatch) {
+    const [, owner, repo, prNumber] = githubMatch;
+    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`;
+    const headers: Record<string, string> = { Accept: 'application/vnd.github+json' };
+    const token = process.env.GITHUB_TOKEN;
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(apiUrl, { headers });
+    if (!res.ok) throw new Error(`GitHub API error ${res.status}: ${await res.text()}`);
+    const data = await res.json() as { head: { ref: string }; base: { ref: string }; title: string; html_url: string };
+    return {
+      sourceBranch: data.head.ref,
+      targetBranch: data.base.ref,
+      title: data.title,
+      url: data.html_url,
+    };
+  }
+
+  // GitLab MR: https://gitlab.com/group/project/-/merge_requests/123
+  // Also supports self-hosted: https://gitlab.company.com/group/project/-/merge_requests/123
+  const gitlabMatch = mrUrl.match(/([^/]+\.[^/]+)\/(.+?)\/-\/merge_requests\/(\d+)/);
+  if (gitlabMatch) {
+    const [, host, projectPath, mrId] = gitlabMatch;
+    const encodedPath = encodeURIComponent(projectPath);
+    const apiUrl = `https://${host}/api/v4/projects/${encodedPath}/merge_requests/${mrId}`;
+    const headers: Record<string, string> = {};
+    const token = process.env.GITLAB_TOKEN;
+    if (token) headers['PRIVATE-TOKEN'] = token;
+
+    const res = await fetch(apiUrl, { headers });
+    if (!res.ok) throw new Error(`GitLab API error ${res.status}: ${await res.text()}`);
+    const data = await res.json() as { source_branch: string; target_branch: string; title: string; web_url: string };
+    return {
+      sourceBranch: data.source_branch,
+      targetBranch: data.target_branch,
+      title: data.title,
+      url: data.web_url,
+    };
+  }
+
+  throw new Error(`Unsupported MR/PR URL format. Supported:\n  GitHub: https://github.com/owner/repo/pull/123\n  GitLab: https://gitlab.com/group/project/-/merge_requests/123`);
+}
+
 export async function reviewCommand(opts: {
   root?: string;
   base?: string;
+  source?: string;
+  target?: string;
+  mr?: string;
   output?: string;
   json?: boolean;
 }): Promise<void> {
   const root = path.resolve(opts.root ?? process.cwd());
-  const base = opts.base ?? 'main';
   const sourceMapPath = path.join(root, '.claude', 'source-map.json');
 
   if (!fs.existsSync(sourceMapPath)) {
@@ -29,15 +84,71 @@ export async function reviewCommand(opts: {
     process.exit(1);
   }
 
+  // Resolve source/target branches
+  let sourceBranch: string;
+  let targetBranch: string;
+  let mrTitle: string | undefined;
+  let mrUrl: string | undefined;
+
+  if (opts.mr) {
+    console.log(pc.dim(`Fetching MR info from ${opts.mr}...`));
+    try {
+      const info = await fetchMrInfo(opts.mr);
+      sourceBranch = info.sourceBranch;
+      targetBranch = info.targetBranch;
+      mrTitle = info.title;
+      mrUrl = info.url;
+      console.log(pc.green('✓') + ` MR: "${mrTitle}"`);
+      console.log(pc.dim(`  ${sourceBranch} → ${targetBranch}`));
+    } catch (err) {
+      console.error(pc.red('✗') + ' ' + (err as Error).message);
+      process.exit(1);
+    }
+  } else if (opts.source && opts.target) {
+    sourceBranch = opts.source;
+    targetBranch = opts.target;
+  } else if (opts.source) {
+    // Only source provided — diff source vs HEAD (backwards compat with --base)
+    sourceBranch = opts.source;
+    targetBranch = 'HEAD';
+  } else {
+    // Legacy --base flag
+    sourceBranch = opts.base ?? 'main';
+    targetBranch = 'HEAD';
+  }
+
+  // Build git diff command
+  // When target is HEAD: git diff source...HEAD (changes from fork point to HEAD)
+  // When both specified: git diff target...source (changes in source not in target)
+  const diffRef = targetBranch === 'HEAD'
+    ? `${sourceBranch}...HEAD`
+    : `${targetBranch}...${sourceBranch}`;
+
   // Get changed files from git diff
+  // Try direct ref first, then fallback to origin/ prefix for remote-only branches
   let changedFiles: string[] = [];
-  try {
-    const out = execSync(`git -C "${root}" diff --name-only ${base}...HEAD`, {
-      encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 10000,
-    });
-    changedFiles = out.trim().split('\n').filter(Boolean);
-  } catch {
-    console.error(pc.red('✗') + ` Could not run git diff against base: ${base}`);
+  const refsToTry = [diffRef];
+  if (targetBranch !== 'HEAD') {
+    // Also try with origin/ prefix in case branches are only at remote
+    const originDiffRef = `origin/${targetBranch}...origin/${sourceBranch}`;
+    if (originDiffRef !== diffRef) refsToTry.push(originDiffRef);
+  }
+
+  let succeeded = false;
+  for (const ref of refsToTry) {
+    try {
+      const out = execSync(`git -C "${root}" diff --name-only ${ref}`, {
+        encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 10000,
+      });
+      changedFiles = out.trim().split('\n').filter(Boolean);
+      succeeded = true;
+      break;
+    } catch { /* try next */ }
+  }
+
+  if (!succeeded) {
+    console.error(pc.red('✗') + ` Could not run git diff: ${diffRef}`);
+    console.error(pc.dim(`  Make sure both branches exist locally or remotely. Try: git fetch origin`));
     process.exit(1);
   }
 
@@ -111,7 +222,14 @@ export async function reviewCommand(opts: {
   const allFiles = [...changed, ...impacted];
 
   if (opts.json) {
-    const output = JSON.stringify({ base, changed: changed.map(f => f.path), impacted: impacted.map(f => f.path) }, null, 2);
+    const output = JSON.stringify({
+      sourceBranch,
+      targetBranch,
+      diffRef,
+      mr: mrUrl ? { title: mrTitle, url: mrUrl } : undefined,
+      changed: changed.map(f => f.path),
+      impacted: impacted.map(f => f.path),
+    }, null, 2);
     if (opts.output) {
       fs.writeFileSync(path.resolve(opts.output), output, 'utf-8');
     } else {
@@ -123,7 +241,13 @@ export async function reviewCommand(opts: {
   // Generate markdown review context for Claude
   const lines: string[] = [];
   lines.push(`# Code Review Context`);
-  lines.push(`> Base: \`${base}\` | Generated by lumina`);
+
+  if (mrUrl) {
+    lines.push(`> MR: [${mrTitle}](${mrUrl})`);
+    lines.push(`> Branches: \`${sourceBranch}\` → \`${targetBranch}\` | Generated by lumina`);
+  } else {
+    lines.push(`> Diff: \`${diffRef}\` | Generated by lumina`);
+  }
   lines.push(`> **Review only the files listed below** — do NOT scan the full source tree.`);
   lines.push(``);
 
@@ -229,13 +353,12 @@ export async function reviewCommand(opts: {
   }
 
   const BYTES_PER_TOKEN = 4;
-  const OVERHEAD_TOKENS = 3000; // system prompt + review context + query
+  const OVERHEAD_TOKENS = 3000;
   const reviewTokens = Math.round(reviewBytes / BYTES_PER_TOKEN) + OVERHEAD_TOKENS;
   const fullRepoTokens = Math.round(fullRepoBytes / BYTES_PER_TOKEN) + OVERHEAD_TOKENS;
   const savedTokens = fullRepoTokens - reviewTokens;
   const savingPct = Math.round((1 - reviewTokens / fullRepoTokens) * 100);
 
-  // Cost at Claude Sonnet pricing ($3/MTok input)
   const COST_PER_TOKEN = 3 / 1_000_000;
   const reviewCost = (reviewTokens * COST_PER_TOKEN).toFixed(4);
   const fullCost = (fullRepoTokens * COST_PER_TOKEN).toFixed(4);

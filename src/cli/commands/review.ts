@@ -175,9 +175,43 @@ export async function reviewCommand(opts: {
     lines.push(``);
   }
 
+  // Token estimation
+  let reviewBytes = 0;
+  for (const f of allFiles) {
+    const abs = path.join(root, f.path);
+    try { reviewBytes += fs.statSync(abs).size; } catch { /* skip */ }
+  }
+
+  let fullRepoBytes = 0;
+  for (const rel of Object.keys(saved.files)) {
+    const abs = path.join(root, rel);
+    try { fullRepoBytes += fs.statSync(abs).size; } catch { /* skip */ }
+  }
+
+  const BYTES_PER_TOKEN = 4;
+  const OVERHEAD_TOKENS = 3000; // system prompt + review context + query
+  const reviewTokens = Math.round(reviewBytes / BYTES_PER_TOKEN) + OVERHEAD_TOKENS;
+  const fullRepoTokens = Math.round(fullRepoBytes / BYTES_PER_TOKEN) + OVERHEAD_TOKENS;
+  const savedTokens = fullRepoTokens - reviewTokens;
+  const savingPct = Math.round((1 - reviewTokens / fullRepoTokens) * 100);
+
+  // Cost at Claude Sonnet pricing ($3/MTok input)
+  const COST_PER_TOKEN = 3 / 1_000_000;
+  const reviewCost = (reviewTokens * COST_PER_TOKEN).toFixed(4);
+  const fullCost = (fullRepoTokens * COST_PER_TOKEN).toFixed(4);
+
   lines.push(`---`);
   lines.push(`**Total files to review: ${allFiles.length}** (${changed.length} changed + ${impacted.length} impacted)`);
   lines.push(`vs full repo: **${saved.totalFiles} files** — saving ${Math.round((1 - allFiles.length / saved.totalFiles) * 100)}% scan effort`);
+  lines.push(``);
+  lines.push(`## Token Estimate`);
+  lines.push(``);
+  lines.push(`| | Lumina review | Full repo scan |`);
+  lines.push(`|---|---|---|`);
+  lines.push(`| Files | ${allFiles.length} | ${saved.totalFiles} |`);
+  lines.push(`| Input tokens | ~${reviewTokens.toLocaleString()} | ~${fullRepoTokens.toLocaleString()} |`);
+  lines.push(`| Est. cost (Sonnet $3/MTok) | ~$${reviewCost} | ~$${fullCost} |`);
+  lines.push(`| Tokens saved | | **~${savedTokens.toLocaleString()} (${savingPct}%)** |`);
 
   const content = lines.join('\n');
 
@@ -186,6 +220,7 @@ export async function reviewCommand(opts: {
     fs.writeFileSync(outPath, content, 'utf-8');
     console.log(pc.green('✓') + ` Review context saved: ${outPath}`);
     console.log(pc.dim(`  ${changed.length} changed + ${impacted.length} impacted = ${allFiles.length} files to review (of ${saved.totalFiles} total)`));
+    console.log(pc.dim(`  ~${reviewTokens.toLocaleString()} tokens (~$${reviewCost}) vs full scan ~${fullRepoTokens.toLocaleString()} tokens (~$${fullCost})`));
   } else {
     console.log(content);
   }

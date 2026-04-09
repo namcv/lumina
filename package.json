@@ -13,7 +13,7 @@
     }
   },
   "bin": {
-    "lumina": "./dist/cli/index.cjs"
+    "lumina": "./dist/cli/index.js"
   },
   "files": [
     "dist"

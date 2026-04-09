@@ -6,6 +6,7 @@ import { graphCommand } from './commands/graph.js';
 import { prCommentCommand } from './commands/pr-comment.js';
 import { contextCommand } from './commands/context.js';
 import { apiMatchCommand } from './commands/api-match.js';
+import { reviewCommand } from './commands/review.js';
 
 const program = new Command();
 
@@ -67,6 +68,15 @@ program
   .requiredOption('--backend <path>', 'Backend repo path')
   .option('-o, --output <path>', 'Save match report as markdown')
   .action(apiMatchCommand);
+
+program
+  .command('review')
+  .description('Generate a focused review context for Claude from git diff + source-map impact')
+  .option('-r, --root <path>', 'Repo root (default: cwd)')
+  .option('-b, --base <branch>', 'Base branch to diff against (default: main)', 'main')
+  .option('-o, --output <path>', 'Save review context as markdown file')
+  .option('--json', 'Output as JSON instead of markdown')
+  .action((opts: { root?: string; base?: string; output?: string; json?: boolean }) => reviewCommand(opts));
 
 program
   .command('init')

@@ -23,7 +23,8 @@
     "dev": "tsup --watch",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "pnpm build"
   },
   "keywords": [
     "lumina",
@@ -35,7 +36,12 @@
     "dependency-graph",
     "code-analysis"
   ],
-  "author": "",
+  "author": "namcv",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/namcv/lumina.git"
+  },
+  "homepage": "https://github.com/namcv/lumina#readme",
   "license": "MIT",
   "packageManager": "pnpm@10.32.1",
   "devDependencies": {
@@ -48,5 +54,8 @@
     "commander": "^12.0.0",
     "ignore": "^5.3.0",
     "picocolors": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }

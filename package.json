@@ -1,6 +1,6 @@
 {
   "name": "@namcv/lumina",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Illuminate your codebase — auto-generate source maps and architecture context for Claude Code",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

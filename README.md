@@ -9,14 +9,14 @@ Lumina analyzes your React or NestJS repository and produces a rich dependency g
 ## Installation
 
 ```bash
-# Use as CLI (global)
+# Global install
 npm install -g @namcv/lumina
 
-# Or use without installing
-npx @namcv/lumina analyze ./my-repo
-
-# Or as a dev dependency
+# Per-project (recommended)
 npm install @namcv/lumina --save-dev
+
+# Or run without installing
+npx @namcv/lumina <command>
 ```
 
 ---
@@ -24,14 +24,14 @@ npm install @namcv/lumina --save-dev
 ## Quick Start
 
 ```bash
-# 1. Analyze your repo
-lumina analyze ./my-repo
+# 1. Initialize in your project — sets up CLAUDE.md, hooks, and /lumina-review skill
+npx lumina init
 
 # 2. Open interactive dependency graph
-lumina graph -r ./my-repo --open
+npx lumina graph --open
 
-# 3. Before reviewing an MR — get focused review scope
-lumina review --base main -o .claude/review-context.md
+# 3. Review an MR using /lumina-review in Claude Code
+/lumina-review develop
 ```
 
 ---
@@ -185,11 +185,33 @@ Backend routes : 138
 
 ### `init`
 
-Set up hooks to auto-regenerate source maps when files change.
+One-time setup: runs initial analysis, configures PostToolUse hooks, and creates the `/lumina-review` Claude Code skill.
 
 ```bash
-lumina init -r ./my-repo
+# In your project root
+npx lumina init
+
+# Or for a specific directory
+npx lumina init -r ./my-repo
 ```
+
+After running `init`, Claude Code will have:
+- `CLAUDE.md` — architecture context (auto-read by Claude Code)
+- `.claude/source-map.json` — dependency graph
+- `.claude/commands/lumina-review.md` — `/lumina-review` slash command
+- Auto-regeneration hook on every file edit
+
+### `/lumina-review` — Claude Code slash command
+
+After `lumina init`, use this directly inside Claude Code:
+
+```
+/lumina-review              review against main (default)
+/lumina-review develop      review against develop
+/lumina-review HEAD~3       review last 3 commits
+```
+
+Claude will automatically run `lumina review`, read the impact scope, and review only the relevant files — not the entire codebase.
 
 ---
 

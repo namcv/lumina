@@ -24,17 +24,56 @@ npm install @namcv/lumina --save-dev
 ## Quick Start
 
 ```bash
-# Analyze your repo — generates CLAUDE.md + source-map.json
+# 1. Analyze your repo
 lumina analyze ./my-repo
 
-# Open interactive dependency graph in browser
+# 2. Open interactive dependency graph
 lumina graph -r ./my-repo --open
 
-# Generate architecture health report
-lumina analyze ./my-repo --health
+# 3. Before reviewing an MR — get focused review scope
+lumina review --base main -o .claude/review-context.md
 ```
 
-After running `analyze`, Claude Code will automatically read `CLAUDE.md` at your project root and have full architectural context for every conversation.
+---
+
+## Code Review Workflow
+
+The key feature of Lumina: instead of asking Claude to scan your entire codebase, generate a **focused review context** that contains only the files that matter for a given MR.
+
+```bash
+# Generate review context for current branch vs main
+lumina review --base main
+
+# Save to file and paste into Claude Code
+lumina review --base main -o .claude/review-context.md
+```
+
+Example output:
+```
+## Changed Files (32)
+| File | Type | Complexity | Risk |
+| src/helper/utils.ts | unknown | 13.4 | 🔥 High |
+| src/common/constant.ts | unknown | 5.3 | 🔥 High |
+...
+
+## Impacted Files (13)
+> These files import the changed files and may be affected.
+...
+
+Total files to review: 45 (32 changed + 13 impacted)
+vs full repo: 716 files — saving 94% scan effort
+```
+
+Paste the output into Claude Code with:
+```
+<review-context>
+[paste review-context.md content here]
+</review-context>
+
+Please review this MR. Only look at the files listed above.
+```
+
+After running `lumina analyze`, Claude Code will automatically read `CLAUDE.md` and follow the correct review workflow for every conversation.
 
 ---
 
@@ -42,6 +81,7 @@ After running `analyze`, Claude Code will automatically read `CLAUDE.md` at your
 
 - **CLAUDE.md generation** — architecture context Claude Code reads automatically
 - **Source map** — file-level dependency graph with import/export relationships
+- **Focused MR review** — BFS impact tracing to find exactly which files to review
 - **Interactive graph** — D3.js visualization with Force / Cluster / Heatmap modes and macOS-style UI
 - **Circular dependency detection** — find and highlight dependency cycles
 - **Complexity & risk scoring** — per-file metrics based on imports, LOC, and git churn
@@ -67,7 +107,17 @@ lumina analyze ./my-repo
 lumina analyze ./my-repo --health      # also write HEALTH.md
 lumina analyze ./my-repo --skip-git    # skip git churn (faster)
 lumina analyze ./my-repo --skip-unused # skip unused export analysis (faster)
-lumina analyze ./my-repo -o ./output   # custom output directory
+```
+
+### `review`
+
+Generate a focused review context for Claude — lists changed files + their impact chain.
+
+```bash
+lumina review                          # diff against main
+lumina review --base develop           # diff against develop
+lumina review --base main -o .claude/review-context.md
+lumina review --json                   # output as JSON
 ```
 
 ### `graph`
@@ -77,7 +127,6 @@ Generate an interactive D3.js HTML dependency graph.
 ```bash
 lumina graph -r ./my-repo --open       # open in browser after generating
 lumina graph -r ./my-repo --min 2      # only show files imported by ≥2 others
-lumina graph -r ./my-repo -o graph.html
 ```
 
 **Graph modes:** Force · Cluster · Import heat · Complexity · Risk
@@ -114,9 +163,8 @@ lumina context --file src/services/auth.service.ts -r ./my-repo
 Generate a PR impact comment from the current git diff.
 
 ```bash
-lumina pr-comment                  # diff against main
-lumina pr-comment --base develop   # diff against develop
-lumina pr-comment -o comment.md
+lumina pr-comment --base main
+lumina pr-comment --base develop -o comment.md
 ```
 
 ### `api-match`
@@ -174,6 +222,7 @@ await generateGraph({ root: './my-repo', outputPath: './graph.html' });
 | `CLAUDE.md` | Architecture context — auto-read by Claude Code |
 | `.claude/source-map.json` | Machine-readable dependency graph |
 | `.claude/graph.html` | Interactive D3.js visualization |
+| `.claude/review-context.md` | Focused MR review scope (`review` command) |
 | `HEALTH.md` | Architecture health report (`--health` flag) |
 
 ---

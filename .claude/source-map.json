@@ -1,0 +1,217 @@
+{
+  "generated": "2026-04-09T04:58:32.535Z",
+  "root": "/Users/nam.chu/workspace/repo-context-mapper",
+  "framework": [],
+  "totalFiles": 18,
+  "files": {
+    "src/__tests__/base-analyzer.test.ts": {
+      "type": "unknown",
+      "imports": [
+        "src/analyzers/base.ts"
+      ],
+      "importedBy": [],
+      "importedByCount": 0
+    },
+    "src/__tests__/dep-graph.test.ts": {
+      "type": "unknown",
+      "imports": [
+        "src/utils/dep-graph.ts"
+      ],
+      "importedBy": [],
+      "importedByCount": 0
+    },
+    "src/__tests__/impact-report.test.ts": {
+      "type": "unknown",
+      "imports": [
+        "src/generators/impact-report.ts",
+        "src/utils/dep-graph.ts"
+      ],
+      "importedBy": [],
+      "importedByCount": 0
+    },
+    "src/analyze.ts": {
+      "type": "unknown",
+      "imports": [
+        "src/analyzers/base.ts",
+        "src/analyzers/react.ts",
+        "src/analyzers/nestjs.ts",
+        "src/generators/claude-md.ts",
+        "src/generators/graph.ts"
+      ],
+      "importedBy": [
+        "src/cli/commands/analyze.ts",
+        "src/cli/commands/init.ts",
+        "src/index.ts"
+      ],
+      "importedByCount": 3
+    },
+    "src/analyzers/base.ts": {
+      "type": "unknown",
+      "imports": [
+        "src/utils/dep-graph.ts",
+        "src/utils/file-walker.ts"
+      ],
+      "importedBy": [
+        "src/__tests__/base-analyzer.test.ts",
+        "src/analyze.ts",
+        "src/analyzers/nestjs.ts",
+        "src/analyzers/react.ts",
+        "src/cli/commands/impact.ts",
+        "src/generators/claude-md.ts",
+        "src/generators/graph.ts",
+        "src/index.ts"
+      ],
+      "importedByCount": 8
+    },
+    "src/analyzers/nestjs.ts": {
+      "type": "unknown",
+      "imports": [
+        "src/analyzers/base.ts"
+      ],
+      "importedBy": [
+        "src/analyze.ts",
+        "src/generators/claude-md.ts",
+        "src/index.ts"
+      ],
+      "importedByCount": 3
+    },
+    "src/analyzers/react.ts": {
+      "type": "unknown",
+      "imports": [
+        "src/analyzers/base.ts"
+      ],
+      "importedBy": [
+        "src/analyze.ts",
+        "src/generators/claude-md.ts",
+        "src/index.ts"
+      ],
+      "importedByCount": 3
+    },
+    "src/cli/commands/analyze.ts": {
+      "type": "unknown",
+      "imports": [
+        "src/analyze.ts"
+      ],
+      "importedBy": [
+        "src/cli/index.ts"
+      ],
+      "importedByCount": 1
+    },
+    "src/cli/commands/impact.ts": {
+      "type": "unknown",
+      "imports": [
+        "src/analyzers/base.ts",
+        "src/generators/impact-report.ts",
+        "src/utils/dep-graph.ts"
+      ],
+      "importedBy": [
+        "src/cli/index.ts"
+      ],
+      "importedByCount": 1
+    },
+    "src/cli/commands/init.ts": {
+      "type": "unknown",
+      "imports": [
+        "src/analyze.ts"
+      ],
+      "importedBy": [
+        "src/cli/index.ts"
+      ],
+      "importedByCount": 1
+    },
+    "src/cli/index.ts": {
+      "type": "unknown",
+      "imports": [
+        "src/cli/commands/analyze.ts",
+        "src/cli/commands/impact.ts",
+        "src/cli/commands/init.ts"
+      ],
+      "importedBy": [],
+      "importedByCount": 0
+    },
+    "src/generators/claude-md.ts": {
+      "type": "unknown",
+      "imports": [
+        "src/analyzers/base.ts",
+        "src/analyzers/react.ts",
+        "src/analyzers/nestjs.ts",
+        "src/utils/dep-graph.ts"
+      ],
+      "importedBy": [
+        "src/analyze.ts",
+        "src/index.ts"
+      ],
+      "importedByCount": 2
+    },
+    "src/generators/graph.ts": {
+      "type": "unknown",
+      "imports": [
+        "src/utils/dep-graph.ts",
+        "src/analyzers/base.ts"
+      ],
+      "importedBy": [
+        "src/analyze.ts",
+        "src/index.ts"
+      ],
+      "importedByCount": 2
+    },
+    "src/generators/impact-report.ts": {
+      "type": "unknown",
+      "imports": [
+        "src/utils/dep-graph.ts"
+      ],
+      "importedBy": [
+        "src/__tests__/impact-report.test.ts",
+        "src/cli/commands/impact.ts",
+        "src/index.ts"
+      ],
+      "importedByCount": 3
+    },
+    "src/index.ts": {
+      "type": "unknown",
+      "imports": [
+        "src/analyze.ts",
+        "src/analyzers/base.ts",
+        "src/analyzers/react.ts",
+        "src/analyzers/nestjs.ts",
+        "src/utils/dep-graph.ts",
+        "src/utils/file-walker.ts",
+        "src/generators/graph.ts",
+        "src/generators/claude-md.ts",
+        "src/generators/impact-report.ts"
+      ],
+      "importedBy": [],
+      "importedByCount": 0
+    },
+    "src/utils/dep-graph.ts": {
+      "type": "unknown",
+      "imports": [],
+      "importedBy": [
+        "src/__tests__/dep-graph.test.ts",
+        "src/__tests__/impact-report.test.ts",
+        "src/analyzers/base.ts",
+        "src/cli/commands/impact.ts",
+        "src/generators/claude-md.ts",
+        "src/generators/graph.ts",
+        "src/generators/impact-report.ts",
+        "src/index.ts"
+      ],
+      "importedByCount": 8
+    },
+    "src/utils/file-walker.ts": {
+      "type": "unknown",
+      "imports": [],
+      "importedBy": [
+        "src/analyzers/base.ts",
+        "src/index.ts"
+      ],
+      "importedByCount": 2
+    },
+    "tsup.config.ts": {
+      "type": "unknown",
+      "imports": [],
+      "importedBy": [],
+      "importedByCount": 0
+    }
+  }
+}

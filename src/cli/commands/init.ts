@@ -17,7 +17,7 @@ const LUMINA_REVIEW_SKILL = `Generate a focused code review using Lumina's impac
 
 1. Run the following command to generate review context:
 \`\`\`bash
-npx lumina review --base \${ARGUMENTS:-main} --root $(pwd) -o .claude/review-context.md
+npx @namcv/lumina review --base \${ARGUMENTS:-main} --root $(pwd) -o .claude/review-context.md
 \`\`\`
 
 2. Read the generated file: \`.claude/review-context.md\`
